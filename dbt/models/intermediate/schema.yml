@@ -1,0 +1,73 @@
+version: 2
+
+models:
+  - name: int_order_delivery
+    description: >
+      Delivery timing for every order. Delivery metrics are filled only for delivered
+      orders (status delivered and a delivery date present); they are null otherwise,
+      so undelivered orders never count as on time or late.
+    columns:
+      - name: order_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: order_status
+        description: Order status from stg_orders.
+      - name: purchased_at
+        description: When the order was placed.
+      - name: delivered_to_customer_at
+        description: When the customer received the order.
+      - name: estimated_delivery_date
+        description: Date promised to the customer at purchase.
+      - name: is_delivered
+        description: True when status is delivered and a delivery date exists. False for the 8 "delivered" orders with no date.
+        data_tests: [not_null]
+      - name: promised_days
+        description: Calendar days from purchase date to the promised date. Known at purchase time.
+        data_tests: [not_null]
+      - name: delivery_days
+        description: Calendar days from purchase date to delivery date. Null if not delivered.
+      - name: days_late
+        description: Delivery date minus promised date in days. Negative means early. Null if not delivered.
+      - name: is_late
+        description: True if delivered after the promised date, false if on or before it, null if not delivered.
+
+  - name: int_order_items_summary
+    description: One row per order that has at least one item (98,666 of 99,441 orders).
+    columns:
+      - name: order_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: item_count
+        description: Number of items in the order.
+      - name: seller_count
+        description: Number of distinct sellers in the order.
+      - name: items_value
+        description: Sum of item prices in BRL.
+      - name: freight_value
+        description: Sum of freight charged in BRL.
+      - name: total_weight_g
+        description: Sum of package weights of all items, in grams.
+      - name: total_volume_cm3
+        description: Sum of package volumes (length x height x width) of all items, in cubic cm.
+      - name: main_seller_id
+        description: Seller with the highest item value in the order (ties broken by item count, then seller_id).
+        data_tests: [not_null]
+      - name: main_category
+        description: Product category with the highest item value in the order.
+        data_tests: [not_null]
+
+  - name: int_order_payments_summary
+    description: One row per order that has at least one payment (99,440 of 99,441 orders).
+    columns:
+      - name: order_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: payment_count
+        description: Number of payment rows for the order.
+      - name: payment_total
+        description: Total amount paid in BRL. Can differ slightly from items plus freight (instalment interest, vouchers).
+      - name: max_installments
+        description: Highest number of instalments across the order's payments.
+      - name: main_payment_type
+        description: Payment method that covered the largest amount.
+        data_tests: [not_null]
