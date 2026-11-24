@@ -1,0 +1,9 @@
+# Local DuckDB warehouse. The path is relative to the dbt/ folder,
+# so run dbt commands from inside dbt/.
+olist:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ../warehouse/olist.duckdb
+      threads: 4

@@ -1,0 +1,226 @@
+version: 2
+
+models:
+  - name: stg_orders
+    description: One row per order, with English column names and proper timestamp types.
+    columns:
+      - name: order_id
+        description: Primary key. Unique order identifier.
+        data_tests: [unique, not_null]
+      - name: customer_id
+        description: Customer record for this order. Olist issues a new customer_id per order; see customer_unique_id in stg_customers for the person.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_customers')
+                field: customer_id
+      - name: order_status
+        description: Lifecycle status of the order.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [delivered, shipped, canceled, unavailable, invoiced, processing, created, approved]
+      - name: purchased_at
+        description: When the customer placed the order.
+        data_tests: [not_null]
+      - name: approved_at
+        description: When the payment was approved. Null for 160 orders.
+      - name: delivered_to_carrier_at
+        description: When the seller handed the parcel to the logistics partner. Null for 1,783 orders; 166 orders have a value earlier than purchased_at (source data issue).
+      - name: delivered_to_customer_at
+        description: When the customer received the order. Null for orders not yet delivered, and for 8 orders marked delivered.
+      - name: estimated_delivery_date
+        description: Delivery date promised to the customer at purchase. Stored as a date because the source never has a time part.
+        data_tests: [not_null]
+
+  - name: stg_order_items
+    description: One row per item in an order.
+    columns:
+      - name: order_item_key
+        description: Primary key, order_id and item_number joined with a dash.
+        data_tests: [unique, not_null]
+      - name: order_id
+        description: The order this item belongs to.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_orders')
+                field: order_id
+      - name: item_number
+        description: Position of the item within the order, starting at 1.
+        data_tests: [not_null]
+      - name: product_id
+        description: Product sold.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_products')
+                field: product_id
+      - name: seller_id
+        description: Seller who fulfilled this item.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_sellers')
+                field: seller_id
+      - name: shipping_limit_at
+        description: Deadline for the seller to hand the item to the carrier.
+      - name: price
+        description: Item price in BRL.
+      - name: freight_value
+        description: Freight charged for this item in BRL. When an order has several items, freight is split across them.
+
+  - name: stg_order_payments
+    description: One row per payment used for an order.
+    columns:
+      - name: order_payment_key
+        description: Primary key, order_id and payment_sequence joined with a dash.
+        data_tests: [unique, not_null]
+      - name: order_id
+        description: The order paid for.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_orders')
+                field: order_id
+      - name: payment_sequence
+        description: Order of this payment when a customer used more than one method.
+      - name: payment_type
+        description: Payment method (credit_card, boleto, voucher, debit_card, not_defined).
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [credit_card, boleto, voucher, debit_card, not_defined]
+      - name: installments
+        description: Number of instalments chosen for this payment.
+      - name: payment_value
+        description: Amount paid in BRL. 9 rows are exactly 0.
+
+  - name: stg_order_reviews
+    description: >
+      Latest review per order. The source has 99,224 review rows for 98,673 orders
+      (547 orders have more than one review); we keep the most recently answered one.
+      review_id is not unique in the source (789 review_ids are attached to more than
+      one order), so order_id is the primary key here.
+    columns:
+      - name: order_id
+        description: Primary key. The order being reviewed.
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_orders')
+                field: order_id
+      - name: review_id
+        description: Review identifier from the source. Not unique across orders.
+        data_tests: [not_null]
+      - name: review_score
+        description: Customer rating from 1 (worst) to 5 (best).
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5]
+                quote: false
+      - name: comment_title
+        description: Optional review title, in Portuguese.
+      - name: comment_message
+        description: Optional free-text review, in Portuguese.
+      - name: has_comment
+        description: True when the customer wrote a comment message.
+      - name: review_sent_at
+        description: When the satisfaction survey was sent to the customer.
+      - name: review_answered_at
+        description: When the customer answered the survey.
+      - name: reviews_for_order
+        description: How many review rows the source had for this order before deduplication.
+
+  - name: stg_customers
+    description: One row per customer_id (which means one row per order).
+    columns:
+      - name: customer_id
+        description: Primary key. Customer record tied to a single order.
+        data_tests: [unique, not_null]
+      - name: customer_unique_id
+        description: Identifies the actual person across orders. 96,096 distinct values.
+        data_tests: [not_null]
+      - name: zip_code_prefix
+        description: First 5 digits of the customer zip code.
+      - name: city
+        description: Customer city.
+      - name: state
+        description: Customer state (two-letter Brazilian state code, e.g. SP).
+        data_tests: [not_null]
+
+  - name: stg_sellers
+    description: One row per seller.
+    columns:
+      - name: seller_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: zip_code_prefix
+        description: First 5 digits of the seller zip code.
+      - name: city
+        description: Seller city.
+      - name: state
+        description: Seller state (two-letter code).
+        data_tests: [not_null]
+
+  - name: stg_category_translation
+    description: Portuguese to English category names, plus 2 categories missing from the source file added by hand.
+    columns:
+      - name: category_name_pt
+        description: Primary key. Category name in Portuguese.
+        data_tests: [unique, not_null]
+      - name: category_name
+        description: Category name in English.
+        data_tests: [not_null]
+      - name: is_manual_translation
+        description: True for the 2 rows added by hand.
+
+  - name: stg_products
+    description: One row per product, with the English category name.
+    columns:
+      - name: product_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: category_name_pt
+        description: Original Portuguese category name. Null for 610 products.
+      - name: category_name
+        description: English category name, or 'unknown' when the source has no category.
+        data_tests: [not_null]
+      - name: name_length
+        description: Number of characters in the product name (source column product_name_lenght, typo fixed).
+      - name: description_length
+        description: Number of characters in the product description (source column product_description_lenght, typo fixed).
+      - name: photos_qty
+        description: Number of product photos in the listing.
+      - name: weight_g
+        description: Package weight in grams. Null for 2 products.
+      - name: length_cm
+        description: Package length in cm.
+      - name: height_cm
+        description: Package height in cm.
+      - name: width_cm
+        description: Package width in cm.
+
+  - name: stg_geolocation
+    description: Typed copy of the geolocation source. Not unique by zip prefix (many duplicate rows) and not used downstream.
+    columns:
+      - name: zip_code_prefix
+        description: First 5 digits of a zip code. Repeats many times.
+      - name: latitude
+        description: Latitude.
+      - name: longitude
+        description: Longitude.
+      - name: city
+        description: City name.
+      - name: state
+        description: State (two-letter code).

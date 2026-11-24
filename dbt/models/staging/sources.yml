@@ -1,0 +1,27 @@
+version: 2
+
+sources:
+  - name: raw
+    description: >
+      The 9 Olist CSV files loaded as-is (every column as text) by scripts/load_raw.py.
+      Source: Kaggle dataset olistbr/brazilian-ecommerce, licence CC BY-NC-SA 4.0.
+    schema: raw
+    tables:
+      - name: orders
+        description: One row per order with its status and lifecycle timestamps.
+      - name: order_items
+        description: One row per item in an order. An order with 3 units has 3 rows.
+      - name: order_payments
+        description: One row per payment used for an order. An order can be split across several payments.
+      - name: order_reviews
+        description: Customer satisfaction surveys sent after delivery (or after the estimated date).
+      - name: customers
+        description: One row per customer_id. Olist creates a new customer_id for every order.
+      - name: sellers
+        description: One row per seller on the marketplace.
+      - name: products
+        description: One row per product, with its Portuguese category name and package dimensions.
+      - name: geolocation
+        description: Brazilian zip code prefixes with latitude and longitude. Contains many duplicate rows.
+      - name: category_translation
+        description: Portuguese to English product category names.
