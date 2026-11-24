@@ -1,0 +1,24 @@
+# private notes
+INTERVIEW_NOTES.md
+
+# secrets and environments
+.env
+.venv/
+
+# data and warehouse (rebuilt from scripts)
+data/raw/
+*.duckdb
+*.duckdb.wal
+
+# dbt artefacts
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+dbt/.user.yml
+
+# python and notebooks
+__pycache__/
+.ipynb_checkpoints/
+
+# os
+.DS_Store
