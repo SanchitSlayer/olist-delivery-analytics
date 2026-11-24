@@ -1,0 +1,190 @@
+version: 2
+
+models:
+  - name: fct_orders
+    description: One row per order with value, items, payment, delivery metrics and review score. The main table for analysis.
+    columns:
+      - name: order_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: customer_id
+        description: Order-level customer record.
+        data_tests: [not_null]
+      - name: customer_unique_id
+        description: The real customer.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customers')
+                field: customer_unique_id
+      - name: customer_state
+        description: Customer state at the time of this order.
+      - name: order_status
+        description: Order status.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [delivered, shipped, canceled, unavailable, invoiced, processing, created, approved]
+      - name: purchased_at
+        description: When the order was placed.
+      - name: purchase_month
+        description: First day of the purchase month.
+      - name: item_count
+        description: Number of items. 0 for the 775 orders with no item rows.
+      - name: seller_count
+        description: Number of distinct sellers in the order.
+      - name: items_value
+        description: Sum of item prices in BRL.
+      - name: freight_value
+        description: Sum of freight charged in BRL.
+      - name: order_value
+        description: items_value plus freight_value, in BRL. This is the order value used for revenue.
+      - name: total_weight_g
+        description: Total package weight of the order's items, in grams.
+      - name: total_volume_cm3
+        description: Total package volume of the order's items, in cubic cm.
+      - name: main_seller_id
+        description: Seller with the highest item value in the order. Null for orders with no items.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_sellers')
+                field: seller_id
+      - name: seller_state
+        description: State of the main seller.
+      - name: is_same_state
+        description: True when the main seller and the customer are in the same state.
+      - name: main_category
+        description: English product category with the highest item value in the order.
+      - name: payment_type
+        description: Payment method that covered the largest amount.
+      - name: payment_count
+        description: Number of payment rows.
+      - name: payment_total
+        description: Total amount paid in BRL.
+      - name: max_installments
+        description: Highest instalment count across the order's payments.
+      - name: estimated_delivery_date
+        description: Date promised to the customer at purchase.
+      - name: delivered_to_customer_at
+        description: When the customer received the order.
+      - name: is_delivered
+        description: True when status is delivered and a delivery date exists.
+      - name: promised_days
+        description: Calendar days from purchase to the promised date.
+      - name: delivery_days
+        description: Calendar days from purchase to delivery. Null if not delivered.
+      - name: days_late
+        description: Delivery date minus promised date. Negative means early. Null if not delivered.
+      - name: is_late
+        description: True if delivered after the promised date; null if not delivered.
+      - name: review_score
+        description: Review score 1 to 5 (latest review for the order). Null for the 768 orders with no review.
+      - name: review_has_comment
+        description: True if the review includes a written comment.
+
+  - name: dim_customers
+    description: One row per real customer (customer_unique_id).
+    columns:
+      - name: customer_unique_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: zip_code_prefix
+        description: Zip prefix from the customer's most recent order.
+      - name: city
+        description: City from the customer's most recent order.
+      - name: state
+        description: State from the customer's most recent order.
+      - name: order_count
+        description: Number of orders placed.
+      - name: is_repeat_customer
+        description: True if the customer placed more than one order.
+      - name: first_order_at
+        description: First purchase timestamp.
+      - name: last_order_at
+        description: Most recent purchase timestamp.
+
+  - name: dim_products
+    description: One row per product with category, package size and sales totals.
+    columns:
+      - name: product_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: category_name
+        description: English category name, or 'unknown'.
+      - name: category_name_pt
+        description: Original Portuguese category name.
+      - name: weight_g
+        description: Package weight in grams.
+      - name: length_cm
+        description: Package length in cm.
+      - name: height_cm
+        description: Package height in cm.
+      - name: width_cm
+        description: Package width in cm.
+      - name: volume_cm3
+        description: length x height x width, in cubic cm.
+      - name: photos_qty
+        description: Number of listing photos.
+      - name: items_sold
+        description: Number of item rows sold.
+      - name: orders_with_product
+        description: Number of distinct orders containing the product.
+      - name: items_revenue
+        description: Sum of item prices for this product in BRL (excludes freight).
+
+  - name: dim_sellers
+    description: >
+      One row per seller with delivery performance. An order counts for every seller
+      who shipped an item in it, so late_orders summed across sellers is slightly
+      higher than the number of late orders.
+    columns:
+      - name: seller_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: zip_code_prefix
+        description: Seller zip prefix.
+      - name: city
+        description: Seller city.
+      - name: state
+        description: Seller state.
+      - name: orders_handled
+        description: Distinct orders in which the seller shipped at least one item.
+      - name: delivered_orders
+        description: Of those, orders that were delivered.
+      - name: late_orders
+        description: Of the delivered orders, how many arrived after the promised date.
+      - name: late_rate
+        description: late_orders / delivered_orders. Null if the seller has no delivered orders.
+      - name: avg_delivery_days
+        description: Average days from purchase to delivery for the seller's delivered orders.
+      - name: avg_review_score
+        description: Average review score of the seller's orders.
+      - name: reviewed_orders
+        description: Number of the seller's orders with a review.
+      - name: items_revenue
+        description: Sum of the seller's item prices in BRL.
+
+  - name: mart_monthly_kpis
+    description: >
+      Monthly KPIs by purchase month. The first months (2016-09 to 2016-12) and last
+      months (2018-09, 2018-10) have very few orders and should be excluded from trends.
+    columns:
+      - name: month
+        description: Primary key. First day of the purchase month.
+        data_tests: [unique, not_null]
+      - name: orders
+        description: Orders placed in the month (all statuses).
+      - name: revenue
+        description: Sum of order_value for orders not canceled or unavailable, in BRL.
+      - name: delivered_orders
+        description: Orders placed in the month that were delivered.
+      - name: avg_delivery_days
+        description: Average days from purchase to delivery.
+      - name: late_orders
+        description: Delivered orders that arrived after the promised date.
+      - name: late_rate
+        description: late_orders / delivered_orders.
+      - name: avg_review_score
+        description: Average review score of orders placed in the month.
