@@ -118,6 +118,21 @@ product or listing issue rather than a delivery one. Ask sellers to fill in the 
 November. The model has no seasonality, and November 2017 was 63% above October. Plan Black Friday separately
 from last year's uplift. With another year of data, a seasonal model would be the right next step.
 
+## 7. Can we flag at-risk orders early?
+
+**Finding:** Partly. A model that only uses information available at purchase finds 38.4% of late orders in the
+riskiest 10% of orders (3.8 times better than random), tested on the most recent three months of data.
+
+- Most of its signal comes from the promised delivery time: the shorter the promise, the higher the risk.
+  The seller's and customer's states come next.
+- Olist shortened its promised times sharply in mid-2018 (median 28 days in June, 14 in August), and short
+  promises were missed far more often (11.6% late when promised within 10 days).
+- Full results, the drivers explained in plain English and the limitations: [model_results.md](model_results.md).
+
+**So what:** Use the score to give the operations team a short daily review list. The bigger lever is the
+promise itself: shortening promised dates raises the late rate, so the trade-off between an attractive promise
+and a kept promise should be a deliberate decision, made route by route.
+
 ---
 
 ## Limitations
