@@ -133,6 +133,51 @@ riskiest 10% of orders (3.8 times better than random), tested on the most recent
 promise itself: shortening promised dates raises the late rate, so the trade-off between an attractive promise
 and a kept promise should be a deliberate decision, made route by route.
 
+## 8. What are unhappy customers complaining about?
+
+**Finding:** Delivery problems are only part of the story. Wrong or incomplete orders are almost as common as
+"not received" complaints, and most "not received" complaints come from customers still waiting for a late
+order.
+
+Method: a random sample of 400 of the 10,839 reviews scored 1–2 that have comment text. Each was labelled by
+Gemini (`gemini-3.5-flash`) with an English translation, one main theme, and a confidence score. 380 were
+labelled; the last batch of 20 hit the free-tier daily quota. With 380 reviews, each share below is accurate to
+within about ±5 percentage points. Code: `src/review_themes.py`.
+
+| Theme | Reviews | Share | Keyword baseline share |
+|---|---|---|---|
+| not_received | 116 | 30.5% | 28.4% |
+| wrong_item | 108 | 28.4% | 11.3% |
+| poor_quality | 45 | 11.8% | 5.3% |
+| damaged_or_defective | 32 | 8.4% | 6.3% |
+| seller_communication | 30 | 7.9% | 4.7% |
+| other | 25 | 6.6% | 34.5% |
+| late_delivery | 24 | 6.3% | 9.5% |
+
+- Delivery problems (not_received + late_delivery) make up 36.8% of complaints. Product and fulfilment problems
+  (wrong_item + damaged_or_defective + poor_quality) make up 48.7%.
+- **"Wrong item" is often "incomplete order."** About half of the wrong_item reviews (50 of 108, by a simple
+  word search of the translations) describe items missing from the order ("I bought 4 wheels and only 1
+  arrived"). 69% of the sampled reviews on multi-item orders are wrong_item, vs 17% on single-item orders.
+- **Checked against the delivery data, "not received" mostly means "late and still waiting."** Of the 116
+  not_received reviews, 65 were on orders that were eventually delivered late (62 of those reviews were written
+  before the parcel arrived), and 31 were on orders never delivered. The remaining 20 were on orders the data
+  marks as delivered on time; several of these say the website showed "delivered" when nothing arrived.
+- The two views agree from both directions. 78% of reviews on late orders are about delivery (not_received or
+  late_delivery). 78% of reviews on on-time orders are about the product: wrong_item 46.7%, poor_quality
+  18.9%, damaged_or_defective 12.3%.
+- The keyword baseline agrees with Gemini on 53.7% of reviews. It leaves 34.5% unclassified ("other", vs 6.6%
+  for Gemini) and finds only 30% of the wrong_item cases, because customers describe them in many ways
+  ("veio outro", "só recebi um", "faltou").
+- Accuracy against human labels is pending: 40 of these reviews are set aside in `data/labels/hand_labels.csv`
+  for blind manual labelling, scored by `scripts/score_hand_labels.py`.
+
+**So what:** Two cheap fixes would address most of these complaints. (1) Send a proactive "your order is
+delayed" message before the promised date passes, since customers who write "not received" are mostly still
+waiting for a late parcel. (2) Pick-and-pack checks for multi-item orders: a large share of "wrong item"
+complaints are really items left out of the box. Also audit the carriers' proof of delivery on orders marked
+delivered where the customer says nothing arrived.
+
 ---
 
 ## Limitations
