@@ -37,7 +37,7 @@ RANDOM_STATE = 42
 BATCH_SIZE = 20
 MAX_ATTEMPTS = 5
 SECONDS_BETWEEN_CALLS = 7.0   # stays under ~10 requests a minute on the free tier
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-3.5-flash"
 
 THEMES = [
     "late_delivery",
